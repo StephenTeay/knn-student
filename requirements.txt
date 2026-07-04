@@ -1,0 +1,29 @@
+# requirements.txt
+# =================
+# Exact versions from the implementation environment.
+# Install with: pip install -r requirements.txt
+#
+# Core stack (as specified in the task brief):
+#   Python 3.12.3
+#   streamlit           - interactive dashboard (Section 3.6.4)
+#   scikit-learn        - KNN + preprocessing + baselines (Section 3.6.3)
+#   pandas              - ETL / feature matrix / reporting
+#   numpy               - vectorized computations throughout
+#   plotly              - interactive charts in the dashboard
+#   sqlite3             - built-in, no pin required
+#
+# Additional stack (added for substantive reasons, each justified below):
+#   imbalanced-learn    - SMOTE for minority-class correction (Section 3.3.3)
+#   joblib              - model artifact serialization (Section 3.6.3)
+#   pyarrow             - parquet read/write for the feature matrix
+#                         (fast columnar storage avoids re-running feature
+#                          engineering on every dashboard startup)
+
+streamlit==1.58.0
+scikit-learn==1.8.0
+pandas==3.0.2
+numpy==2.4.4
+plotly==6.8.0
+imbalanced-learn==0.14.2
+joblib==1.5.3
+pyarrow>=15.0.0

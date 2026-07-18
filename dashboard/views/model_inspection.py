@@ -13,8 +13,6 @@ This view has no institutional-staff equivalent and is gated entirely by
 the is_researcher check in dashboard/app.py -- Section 3.6.4 is explicit
 that raw model internals are "for the researcher" and not the staff view.
 """
-import json
-
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -22,8 +20,11 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from dashboard.data_access import (
-    load_confusion_matrix, load_fairness_reports, load_feature_matrix,
-    load_model_comparison, load_training_metadata,
+    load_confusion_matrix,
+    load_fairness_reports,
+    load_feature_matrix,
+    load_model_comparison,
+    load_training_metadata,
 )
 from features.feature_engineering import FEATURE_COLUMNS
 
@@ -36,15 +37,21 @@ def _confusion_matrix_fig(cm_df: pd.DataFrame) -> go.Figure:
     labels = [c.replace("true_", "") for c in cm_df.index]
     z = cm_df.values.tolist()
     fig = go.Figure(go.Heatmap(
-        z=z, x=[f"pred_{l}" for l in labels], y=[f"true_{l}" for l in labels],
-        colorscale="Blues", showscale=True,
+        z=z,
+        x=[f"pred_{l}" for l in labels],
+        y=[f"true_{l}" for l in labels],
+        colorscale="Blues",
+        showscale=True,
         text=[[str(v) for v in row] for row in z],
-        texttemplate="%{text}", textfont_size=14,
+        texttemplate="%{text}",
+        textfont_size=14,
     ))
     fig.update_layout(
         title="Confusion matrix (KNN+SMOTE, held-out test set)",
-        xaxis_title="Predicted", yaxis_title="True",
-        margin=dict(t=50, b=20, l=20, r=20), height=360,
+        xaxis_title="Predicted",
+        yaxis_title="True",
+        margin=dict(t=50, b=20, l=20, r=20),
+        height=360,
     )
     return fig
 
@@ -74,12 +81,20 @@ def _feature_importance_fig(features: pd.DataFrame) -> go.Figure:
         "BEI": "#e15759", "EES": "#f28e2b", "CES": "#59a14f",
     }
     fig = px.bar(
-        importance.reset_index(), x=0, y="index", orientation="h",
-        color="index", color_discrete_map=col_colors,
+        importance.reset_index(),
+        x=0,
+        y="index",
+        orientation="h",
+        color="index",
+        color_discrete_map=col_colors,
         labels={"index": "Feature", 0: "Mutual Information"},
         title="Feature importance (Mutual Information, Section 3.3.5)",
     )
-    fig.update_layout(showlegend=False, margin=dict(t=50, b=20, l=20, r=20), height=360)
+    fig.update_layout(
+        showlegend=False,
+        margin=dict(t=50, b=20, l=20, r=20),
+        height=360,
+    )
     return fig
 
 
@@ -100,15 +115,23 @@ def render(is_researcher: bool) -> None:
 
     st.divider()
 
-    # --- Model comparison table ----------------------------------------
+    # ------------------------------------------------------------------
+    # Model comparison table
+    # ------------------------------------------------------------------
     st.markdown("### Model comparison (held-out test set)")
     comparison = load_model_comparison()
     if comparison.empty:
         st.warning("No model comparison CSV found.")
     else:
-        num_cols = [c for c in comparison.columns if comparison[c].dtype != object]
-        styled = comparison.style.format({c: "{:.4f}" for c in num_cols})
-        st.dataframe(styled, use_container_width=True)
+        numeric_fmt = {
+            c: "{:.4f}"
+            for c in comparison.columns
+            if pd.api.types.is_numeric_dtype(comparison[c])
+        }
+        st.dataframe(
+            comparison.style.format(numeric_fmt) if numeric_fmt else comparison,
+            use_container_width=True,
+        )
         st.caption(
             "**Key finding**: compare `recall_at_risk` between "
             "`knn_optimized_smote` (SMOTE on) and `knn_optimized_no_smote` "
@@ -119,7 +142,9 @@ def render(is_researcher: bool) -> None:
 
     st.divider()
 
-    # --- Confusion matrix ----------------------------------------------
+    # ------------------------------------------------------------------
+    # Confusion matrix
+    # ------------------------------------------------------------------
     st.markdown("### Confusion matrix")
     cm_df = load_confusion_matrix()
     if cm_df.empty:
@@ -131,18 +156,26 @@ def render(is_researcher: bool) -> None:
         with col2:
             st.markdown("**Row = true class, column = predicted class.**")
             total = cm_df.values.sum()
-            st.metric("Correctly classified", int(np.diag(cm_df.values).sum()),
-                       help=f"Out of {total} held-out test students.")
+            st.metric(
+                "Correctly classified",
+                int(np.diag(cm_df.values).sum()),
+                help=f"Out of {total} held-out test students.",
+            )
             at_risk_row = cm_df.loc[cm_df.index.str.contains("at_risk")]
             if not at_risk_row.empty:
                 tp = int(at_risk_row["pred_at_risk"].values[0])
                 fn = int(at_risk_row.drop(columns=["pred_at_risk"]).values[0].sum())
-                st.metric("At-risk recall (SMOTE model)", f"{tp/(tp+fn):.1%}" if (tp+fn) > 0 else "—",
-                           help="True at-risk students correctly flagged.")
+                st.metric(
+                    "At-risk recall (SMOTE model)",
+                    f"{tp / (tp + fn):.1%}" if (tp + fn) > 0 else "—",
+                    help="True at-risk students correctly flagged.",
+                )
 
     st.divider()
 
-    # --- Feature importance -------------------------------------------
+    # ------------------------------------------------------------------
+    # Feature importance
+    # ------------------------------------------------------------------
     st.markdown("### Feature importance (Mutual Information)")
     features = load_feature_matrix()
     if not features.empty:
@@ -157,7 +190,9 @@ def render(is_researcher: bool) -> None:
 
     st.divider()
 
-    # --- Subgroup fairness --------------------------------------------
+    # ------------------------------------------------------------------
+    # Subgroup fairness
+    # ------------------------------------------------------------------
     st.markdown("### Subgroup fairness (Section 3.5)")
     fairness = load_fairness_reports()
     if not fairness:
@@ -174,15 +209,22 @@ def render(is_researcher: bool) -> None:
                     icon="⚠️",
                 )
             else:
-                st.info(f"Accuracy gap across {attr} groups = {acc_gap:.3f} (within 10 pp).")
+                st.info(
+                    f"Accuracy gap across {attr} groups = {acc_gap:.3f} (within 10 pp)."
+                )
             fig = px.bar(
-                rep, x="group", y="accuracy", color="group",
-                error_y=None,
+                rep,
+                x="group",
+                y="accuracy",
+                color="group",
                 labels={"group": attr, "accuracy": "Accuracy"},
                 height=250,
             )
-            fig.add_hline(y=rep["accuracy"].mean(), line_dash="dash",
-                           annotation_text=f"cohort mean: {rep['accuracy'].mean():.3f}")
+            fig.add_hline(
+                y=rep["accuracy"].mean(),
+                line_dash="dash",
+                annotation_text=f"cohort mean: {rep['accuracy'].mean():.3f}",
+            )
             fig.update_layout(showlegend=False, margin=dict(t=10, b=10, l=10, r=10))
             st.plotly_chart(fig, use_container_width=True)
             st.dataframe(rep, use_container_width=True, hide_index=True)

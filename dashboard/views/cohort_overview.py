@@ -135,10 +135,17 @@ def render(is_researcher: bool) -> None:
 
         st.markdown("**Model comparison (held-out test set)**")
         comparison = load_model_comparison()
-        if not comparison.empty:
-            st.dataframe(comparison.style.format({
-                c: "{:.3f}" for c in comparison.columns if comparison[c].dtype != object
-            }), use_container_width=True)
+    if not comparison.empty:
+        import pandas as pd
+        numeric_cols = {
+            c: "{:.3f}"
+            for c in comparison.columns
+            if pd.api.types.is_numeric_dtype(comparison[c])
+    }
+    st.dataframe(
+        comparison.style.format(numeric_cols) if numeric_cols else comparison,
+        use_container_width=True,
+    )
             st.caption(
                 "knn_optimized_smote vs. knn_optimized_no_smote isolates SMOTE's effect on "
                 "at-risk recall (Section 3.4.3); the deployed dashboard model intentionally "
